@@ -2,7 +2,6 @@ package com.example.robotfoci;
 
 import javafx.scene.paint.Color;
 
-
 import java.net.Socket;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -18,24 +17,20 @@ public class ClientHandler implements Runnable {
     public ClientHandler(Socket socket, GameState gameState) {
         this.clientSocket = socket;
         this.gameState = gameState;
-        // Játékos azonosítás és hozzáadás
-        String playerId = "player1";// + clientSocket.getPort(); // Egyedi ID javasolt
-        Player player1 = new Player(Color.RED, 100, 100); // Alapértelmezett szín és pozíció
+        // Adding players to the game state
+        String playerId = "player1";
+        Player player1 = new Player(Color.RED, 100, 100);
         gameState.addPlayer(playerId, player1);
-        // Játékos azonosítás és hozzáadás
-        playerId = "player2";// + clientSocket.getPort(); // Egyedi ID javasolt
-        Player player2 = new Player(Color.BLUE, 700, 500); // Alapértelmezett szín és pozíció
+        playerId = "player2";
+        Player player2 = new Player(Color.BLUE, 700, 500);
         gameState.addPlayer(playerId, player2);
     }
-
 
     @Override
     public void run() {
         PrintWriter writer = null;
-        try (BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream())))
-        {
+        try (BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()))) {
             writer = clientOutputs.get(clientSocket.getPort());
-
             String inputLine;
             while ((inputLine = in.readLine()) != null) {
                 System.out.println("Received from " + clientSocket.getPort() + ": " + inputLine);
@@ -57,46 +52,54 @@ public class ClientHandler implements Runnable {
     }
 
     private void processMessage(String message) {
-        // Feldolgozza az uzeneteket, frissiti a jatekallapotot
-        updateGameState(message);
-
-        // Állapotfrissítések küldése minden kliensnek
-        broadcastGameState();
-    }
-
-    private void updateGameState(String message) {
         String[] parts = message.split(" ");
-        if ("MOVE".equals(parts[0])) {
-            String playerId = parts[1];
-            double x = Double.parseDouble(parts[2]);
-            double y = Double.parseDouble(parts[3]);
-            updatePlayerPosition(playerId, x, y);
-        } else {
-            System.out.println("Unhandled message: " + message);
+        switch (parts[0]) {
+            case "MOVE":
+                String playerId = parts[1];
+                double x = Double.parseDouble(parts[2]);
+                double y = Double.parseDouble(parts[3]);
+                updatePlayerPosition(playerId, x, y);
+                break;
+            case "KICK":
+                playerId = parts[1];
+                double forceX = Double.parseDouble(parts[2]);
+                double forceY = Double.parseDouble(parts[3]);
+                applyKickForce(playerId, forceX, forceY);
+                break;
+            default:
+                System.out.println("Unhandled message: " + message);
+                break;
         }
     }
 
-
-private void updatePlayerPosition(String playerId, double x, double y) {
-    Player player = gameState.getPlayerById(playerId);
-    if (player != null) {
-        player.setPosition(x, y);
-        System.out.println("Player " + playerId + " moved to " + x + "," + y);
-    } else {
-        System.out.println("Player not found: " + playerId);
+    private void updatePlayerPosition(String playerId, double x, double y) {
+        Player player = gameState.getPlayerById(playerId);
+        if (player != null) {
+            player.setPosition(x, y);
+            System.out.println("Player " + playerId + " moved to " + x + "," + y);
+        } else {
+            System.out.println("Player not found: " + playerId);
+        }
     }
-}
+
+    private void applyKickForce(String playerId, double forceX, double forceY) {
+        Player player = gameState.getPlayerById(playerId);
+        Ball ball = gameState.getBall();
+        if (player != null && ball != null) {
+            double distance = Math.sqrt(Math.pow(ball.getX() - player.getX(), 2) + Math.pow(ball.getY() - player.getY(), 2));
+            if (distance < 30) {
+                ball.setVx(ball.getVx() + forceX);
+                ball.setVy(ball.getVy() + forceY);
+                broadcastGameState();
+            }
+        }
+    }
 
     private void broadcastGameState() {
-        // A játékállapot valós idejű reprezentációjának összeállítása
-        // Példák: "MOVE player1 100 200" vagy "BALL 400 300 0.5 0.3"
         gameState.getPlayers().forEach((playerId, player) -> {
-            // Itt iteráljuk végig a játékosokat, és küldjük el azok aktuális pozícióját
-            // gameState.getPlayers().forEach((playerId, player) -> {
             String playerState = String.format("MOVE %s %.1f %.1f", playerId, player.getX(), player.getY());
-
             clientOutputs.forEach((port, writer) -> {
-                try (PrintWriter out = writer) { // Use try-with-resources
+                try (PrintWriter out = writer) {
                     out.println(playerState);
                     out.flush();
                 } catch (Exception e) {
@@ -104,16 +107,15 @@ private void updatePlayerPosition(String playerId, double x, double y) {
                 }
             });
         });
-        // Labda állapotának elküldése
         Ball ball = gameState.getBall();
         String ballState = String.format("BALL %.1f %.1f %.1f %.1f", ball.getX(), ball.getY(), ball.getVx(), ball.getVy());
         clientOutputs.forEach((port, writer) -> {
-            try (PrintWriter out = writer) { // Use try-with-resources
+            try (PrintWriter out = writer) {
                 out.println(ballState);
                 out.flush();
             } catch (Exception e) {
                 e.printStackTrace();
             }
-         });
+        });
     }
 }

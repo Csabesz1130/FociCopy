@@ -8,9 +8,7 @@ import java.util.concurrent.Executors;
 
 public class Server {
     private final ServerSocket serverSocket;
-
-    private final ExecutorService pool = Executors.newCachedThreadPool(); // Using a cached thread pool
-    //private ExecutorService pool = Executors.newFixedThreadPool(2);
+    private final ExecutorService pool = Executors.newCachedThreadPool();
     private final GameState gameState;
 
     public Server(int port) throws IOException {
@@ -23,7 +21,6 @@ public class Server {
         try {
             while (true) {
                 Socket clientSocket = serverSocket.accept();
-                //ClientHandler clientThread = new ClientHandler(clientSocket, gameState);
                 pool.execute(new ClientHandler(clientSocket, gameState));
             }
         } catch (IOException e) {
@@ -32,7 +29,7 @@ public class Server {
     }
 
     public static void main(String[] args) throws IOException {
-        Server server = new Server(12345); // Például a 12345 porton fut
+        Server server = new Server(12345);
         server.start();
     }
 }

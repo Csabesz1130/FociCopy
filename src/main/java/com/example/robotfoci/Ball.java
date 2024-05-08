@@ -5,13 +5,13 @@ import javafx.scene.shape.Circle;
 
 public class Ball {
     public final Circle circle;
-    private final double x;
-    private final double y;
-    private  double vx;
-    private  double vy;
+    private double x;
+    private double y;
+    private double vx;
+    private double vy;
 
     public Ball(double x, double y, double vx, double vy) {
-        this.circle = new Circle(5, Color.BLACK); // Átmérő és szín
+        this.circle = new Circle(5, Color.BLACK);
         this.x = x;
         this.y = y;
         this.vx = vx;
@@ -29,8 +29,16 @@ public class Ball {
         return x;
     }
 
+    public void setX(double x) {
+        this.x = x;
+    }
+
     public double getY() {
         return y;
+    }
+
+    public void setY(double y) {
+        this.y = y;
     }
 
     public double getVx() {
@@ -41,8 +49,16 @@ public class Ball {
         return vy;
     }
 
-      public void updateCirclePosition() {
-        this.circle.setCenterX(x);
-        this.circle.setCenterY(y);
+    public void updateCirclePosition() {
+        if (x <= 50 || x >= 750) {
+            vx *= -1;
+        }
+        if (y <= 50 || y >= 550) {
+            vy *= -1;
+        }
+        x += vx;
+        y += vy;
+        circle.setCenterX(x);
+        circle.setCenterY(y);
     }
 }
